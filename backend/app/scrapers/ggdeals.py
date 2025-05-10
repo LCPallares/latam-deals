@@ -4,8 +4,8 @@ import requests
 from typing import Dict, List, Optional
 
 def make_soup(url: str) -> BeautifulSoup:
-    headers = {'User-Agent': 'Mozilla/5.0'}
-    response = requests.get(url, headers=headers, timeout=10)
+    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
+    response = requests.get(url, headers=headers, timeout=30)
     response.raise_for_status()  # Lanza error si hay problemas HTTP
     return BeautifulSoup(response.content, "html.parser")
 
