@@ -1,18 +1,56 @@
 # app/scrapers/ggdeals.py
 from bs4 import BeautifulSoup
 import requests
+import time
 from typing import Dict, List, Optional
+from app.utils.proxies import get_random_proxy
+import logging
 
-def make_soup(url: str) -> BeautifulSoup:
+# Configura logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+def make_soup(url: str, max_retries: int = 3) -> BeautifulSoup:
+    """
+    Versión mejorada con:
+    - Proxies rotativos
+    - Reintentos automáticos
+    - Timeout configurable
+    - Manejo de errores robusto
+    """
     headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.5',
-        'Connection': 'keep-alive'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Referer': 'https://gg.deals/'
     }
-    response = requests.get(url, headers=headers, timeout=30)
-    response.raise_for_status()  # Lanza error si hay problemas HTTP
-    return BeautifulSoup(response.content, "html.parser")
+
+    for attempt in range(max_retries):
+        try:
+            proxy = get_random_proxy()
+            logger.info(f"Intento {attempt + 1} con proxy: {proxy['http']}")
+            
+            response = requests.get(
+                url,
+                headers=headers,
+                proxies=proxy,
+                timeout=(10, 25),  # (connect timeout, read timeout)
+                allow_redirects=True
+            )
+            
+            response.raise_for_status()
+            
+            # Verifica si el contenido es HTML válido
+            if 'text/html' not in response.headers.get('Content-Type', ''):
+                raise ValueError("Respuesta no es HTML")
+                
+            return BeautifulSoup(response.content, "html.parser")
+            
+        except Exception as e:
+            logger.warning(f"Error en intento {attempt + 1}: {str(e)}")
+            if attempt == max_retries - 1:
+                raise
+            time.sleep(2 ** attempt)  # Espera exponencial
+
 
 def scrape_ggdeals_game(game_html: str) -> Dict[str, Optional[str]]:
     """Extrae datos de un solo juego (ya implementado por ti)"""
