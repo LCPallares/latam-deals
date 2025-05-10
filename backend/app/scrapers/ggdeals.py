@@ -175,36 +175,47 @@ def scrape_ggdeals_game(game_html: str) -> Dict[str, Optional[str]]:
 #def scrape_ggdeals_page(url: str) -> List[Dict[str, Optional[str]]]:
 def scrape_ggdeals_list(url: str) -> List[Dict]:
     """Extrae todos los juegos de una página de GG.deals"""
-    soup = make_soup(url)
-    game_items = soup.find_all('div', class_='game-list-item')
-    return [scrape_ggdeals_game(str(game)) for game in game_items]
+    # soup = make_soup(url)
+    # game_items = soup.find_all('div', class_='game-list-item')
+    # return [scrape_ggdeals_game(str(game)) for game in game_items]
+    try:
+        soup = make_soup(url)
+        game_items = soup.find_all('div', class_='game-list-item')
+        return [scrape_ggdeals_game(str(game)) for game in game_items]
+    except Exception as e:
+        logger.error(f"Error en scrape_ggdeals_list: {str(e)}")
+        return []
 
 def scrape_ggdeals_game_details(url: str) -> List[Dict]:
     """Extrae información de ofertas de un juego específico en GG.deals"""
-    soup = make_soup(url)
-    deals_container = soup.find_all('div', class_='game-deals-item')
-    
-    game_data_list = []
-    
-    for deal in deals_container:
-        game_data = {
-            'title': deal.find('a', class_='game-info-title').text.strip() if deal.find('a', class_='game-info-title') else None,
-            'shop_name': deal.get('data-shop-name'),
-            'current_price': deal.get('data-deal-value'),
-            'original_price': deal.find('span', class_='price-old').text.strip() if deal.find('span', class_='price-old') else None,
-            'discount': deal.find('span', class_='discount').text.strip() if deal.find('span', class_='discount') else None,
-            'deal_status': deal.find('span', class_='best').text.strip() if deal.find('span', class_='best') else None,
-            'drm': deal.find('svg')['title'] if deal.find('svg') and 'title' in deal.find('svg').attrs else None,
-            'time_added': deal.find('time', class_='timeago-short')['datetime'] if deal.find('time', class_='timeago-short') else None,
-            'expiry': deal.find('time', class_='timesince')['datetime'] if deal.find('time', class_='timesince') else None,
-            'shop_link': deal.find('a', class_='shop-link')['href'] if deal.find('a', class_='shop-link') else None
+    try:
+        soup = make_soup(url)
+        deals_container = soup.find_all('div', class_='game-deals-item')
+        
+        game_data_list = []
+        
+        for deal in deals_container:
+            game_data = {
+                'title': deal.find('a', class_='game-info-title').text.strip() if deal.find('a', class_='game-info-title') else None,
+                'shop_name': deal.get('data-shop-name'),
+                'current_price': deal.get('data-deal-value'),
+                'original_price': deal.find('span', class_='price-old').text.strip() if deal.find('span', class_='price-old') else None,
+                'discount': deal.find('span', class_='discount').text.strip() if deal.find('span', class_='discount') else None,
+                'deal_status': deal.find('span', class_='best').text.strip() if deal.find('span', class_='best') else None,
+                'drm': deal.find('svg')['title'] if deal.find('svg') and 'title' in deal.find('svg').attrs else None,
+                'time_added': deal.find('time', class_='timeago-short')['datetime'] if deal.find('time', class_='timeago-short') else None,
+                'expiry': deal.find('time', class_='timesince')['datetime'] if deal.find('time', class_='timesince') else None,
+                'shop_link': deal.find('a', class_='shop-link')['href'] if deal.find('a', class_='shop-link') else None
+            }
+            game_data_list.append(game_data)
+        
+        game_title = game_data_list[0]['title'] if game_data_list else None
+        
+        return {
+            #'game_title': soup.find('h1', class_='game-title').text.strip() if soup.find('h1', class_='game-title') else None,
+            'game_title': game_title,
+            'deals': game_data_list
         }
-        game_data_list.append(game_data)
-    
-    game_title = game_data_list[0]['title'] if game_data_list else None
-    
-    return {
-        #'game_title': soup.find('h1', class_='game-title').text.strip() if soup.find('h1', class_='game-title') else None,
-        'game_title': game_title,
-        'deals': game_data_list
-    }
+    except Exception as e:
+        logger.error(f"Error en scrape_ggdeals_game_details: {str(e)}")
+        return {'game_title': None, 'deals': []}
