@@ -3,7 +3,8 @@ from bs4 import BeautifulSoup
 import requests
 import time
 from typing import Dict, List, Optional
-from app.utils.proxies import get_random_proxy
+#from app.utils.proxies import get_random_proxy
+from app.utils.proxies import make_web_request
 import logging
 
 # Configura logging
@@ -11,13 +12,6 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 def make_soup(url: str, max_retries: int = 3) -> BeautifulSoup:
-    """
-    Versión mejorada con:
-    - Proxies rotativos
-    - Reintentos automáticos
-    - Timeout configurable
-    - Manejo de errores robusto
-    """
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
         'Accept-Language': 'en-US,en;q=0.9',
@@ -175,23 +169,25 @@ def scrape_ggdeals_game(game_html: str) -> Dict[str, Optional[str]]:
 #def scrape_ggdeals_page(url: str) -> List[Dict[str, Optional[str]]]:
 def scrape_ggdeals_list(url: str) -> List[Dict]:
     """Extrae todos los juegos de una página de GG.deals"""
-    # soup = make_soup(url)
-    # game_items = soup.find_all('div', class_='game-list-item')
-    # return [scrape_ggdeals_game(str(game)) for game in game_items]
     try:
-        soup = make_soup(url)
+        response = make_web_request(url)
+        soup = BeautifulSoup(response.content, "html.parser")
         game_items = soup.find_all('div', class_='game-list-item')
         return [scrape_ggdeals_game(str(game)) for game in game_items]
     except Exception as e:
         logger.error(f"Error en scrape_ggdeals_list: {str(e)}")
         return []
 
-def scrape_ggdeals_game_details(url: str) -> List[Dict]:
-    """Extrae información de ofertas de un juego específico en GG.deals"""
+def scrape_ggdeals_game_details(url: str) -> Dict:
+    """Tu lógica de scraping pura sin manejo de conexiones"""
     try:
-        soup = make_soup(url)
-        deals_container = soup.find_all('div', class_='game-deals-item')
+        response = make_web_request(url)
+        if not response:
+            return {'error': 'All request strategies failed'}
         
+        soup = BeautifulSoup(response.content, "html.parser")
+
+        deals_container = soup.find_all('div', class_='game-deals-item')
         game_data_list = []
         
         for deal in deals_container:
@@ -209,13 +205,11 @@ def scrape_ggdeals_game_details(url: str) -> List[Dict]:
             }
             game_data_list.append(game_data)
         
-        game_title = game_data_list[0]['title'] if game_data_list else None
-        
         return {
-            #'game_title': soup.find('h1', class_='game-title').text.strip() if soup.find('h1', class_='game-title') else None,
-            'game_title': game_title,
+            'game_title': game_data_list[0]['title'] if game_data_list else None,
             'deals': game_data_list
         }
+        
     except Exception as e:
-        logger.error(f"Error en scrape_ggdeals_game_details: {str(e)}")
-        return {'game_title': None, 'deals': []}
+        logger.error(f"Scraping error: {str(e)}")
+        return {'error': str(e)}
